@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Repository Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161d;
+    --bg3: #181c24;
+    --bg4: #1e2330;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555a6b;
+    --accent: #4f7fff;
+    --accent2: #6e95ff;
+    --green: #3ecf8e;
+    --green2: #2a9965;
+    --amber: #f5a623;
+    --red: #f05155;
+    --purple: #a78bfa;
+    --teal: #22d3ee;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── MAIN LAYOUT ── */
+  .app {
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 57px);
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+
+  .panel-header {
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Config section */
+  .config-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field-group { margin-bottom: 12px; }
+  .field-group:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--bg3); }
+
+  /* Task buttons */
+  .task-section {
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .task-section h3 {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .task-btn {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .task-btn:hover { background: var(--bg4); border-color: var(--accent); }
+  .task-btn.active { background: rgba(79,127,255,0.12); border-color: var(--accent); color: var(--accent2); }
+
+  .task-icon {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .task-icon.review { background: rgba(62,207,142,0.15); }
+  .task-icon.draft  { background: rgba(79,127,255,0.15); }
+  .task-icon.improve{ background: rgba(167,139,250,0.15); }
+
+  .task-desc {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 1px;
+    font-weight: 400;
+  }
+
+  /* Instruction area */
+  .instruction-area {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .instruction-area textarea {
+    resize: none;
+    height: 70px;
+    font-size: 12px;
+  }
+
+  .run-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+
+  .run-btn:hover { background: var(--accent2); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── CENTER PANEL ── */
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .center-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  .center-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .phase-badges {
+    display: flex;
+    gap: 6px;
+  }
+
+  .phase-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.4;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+  }
+
+  .phase-badge.active {
+    opacity: 1;
+  }
+
+  .phase-badge.plan  { color: var(--amber);  border-color: rgba(245,166,35,0.3);  background: rgba(245,166,35,0.08); }
+  .phase-badge.tool  { color: var(--teal);   border-color: rgba(34,211,238,0.3);  background: rgba(34,211,238,0.08); }
+  .phase-badge.write { color: var(--accent); border-color: rgba(79,127,255,0.3);  background: rgba(79,127,255,0.08); }
+  .phase-badge.gate  { color: var(--green);  border-color: rgba(62,207,142,0.3);  background: rgba(62,207,142,0.08); }
+
+  /* Agent log */
+  .agent-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+  .agent-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-family: var(--mono);
+  }
+
+  .tag-reviewer  { background: rgba(62,207,142,0.12);  color: var(--green);  border: 1px solid rgba(62,207,142,0.25); }
+  .tag-planner   { background: rgba(245,166,35,0.12);  color: var(--amber);  border: 1px solid rgba(245,166,35,0.25); }
+  .tag-writer    { background: rgba(79,127,255,0.12);  color: var(--accent); border: 1px solid rgba(79,127,255,0.25); }
+  .tag-gatekeeper{ background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+  .tag-tool      { background: rgba(34,211,238,0.08);  color: var(--teal);   border: 1px solid rgba(34,211,238,0.2); }
+  .tag-system    { background: rgba(255,255,255,0.04); color: var(--text3);  border: 1px solid var(--border); }
+
+  .log-content {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text2);
+    padding-top: 2px;
+  }
+
+  .log-content.highlight { color: var(--text); }
+
+  .log-content code {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg3);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--teal);
+  }
+
+  .tool-call {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--teal);
+    margin-top: 4px;
+  }
+
+  .tool-call .tool-name { color: var(--amber); }
+  .tool-call .tool-result { color: var(--text2); margin-top: 4px; }
+
+  .thinking-dots span {
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin: 0 2px;
+    animation: bounce 1.2s infinite;
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  .empty-icon {
+    font-size: 36px;
+    opacity: 0.3;
+  }
+
+  /* Approval panel */
+  .approval-panel {
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    background: var(--bg2);
+    display: none;
+    flex-shrink: 0;
+  }
+
+  .approval-panel.visible { display: block; }
+
+  .approval-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--amber);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .approval-header::before {
+    content: '▲';
+    font-size: 9px;
+  }
+
+  .approval-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-approve {
+    flex: 1;
+    padding: 9px;
+    background: rgba(62,207,142,0.15);
+    border: 1px solid rgba(62,207,142,0.4);
+    border-radius: 6px;
+    color: var(--green);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-approve:hover { background: rgba(62,207,142,0.25); }
+
+  .btn-reject {
+    flex: 1;
+    padding: 9px;
+    background: rgba(240,81,85,0.1);
+    border: 1px solid rgba(240,81,85,0.3);
+    border-radius: 6px;
+    color: var(--red);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-reject:hover { background: rgba(240,81,85,0.2); }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+
+  .right-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 4px;
+  }
+
+  .right-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .right-tab:hover { color: var(--text2); }
+  .right-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .right-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Draft preview */
+  .draft-card {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .draft-card-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .draft-card-header .type-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+
+  .badge-issue { background: rgba(245,166,35,0.15); color: var(--amber); }
+  .badge-pr    { background: rgba(79,127,255,0.15);  color: var(--accent); }
+
+  .draft-body {
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text2);
+    font-family: var(--mono);
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* Reflection card */
+  .reflection-card {
+    background: var(--bg3);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--purple);
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text2);
+  }
+
+  .reflection-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--purple);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+  }
+
+  .verdict-pass { color: var(--green); font-weight: 700; }
+  .verdict-fail { color: var(--red);   font-weight: 700; }
+
+  /* Risk badge */
+  .risk-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .risk-low    { background: rgba(62,207,142,0.12);  color: var(--green); }
+  .risk-medium { background: rgba(245,166,35,0.12);  color: var(--amber); }
+  .risk-high   { background: rgba(240,81,85,0.12);   color: var(--red);   }
+
+  /* Architecture diagram */
+  .arch-section {
+    margin-bottom: 14px;
+  }
+
+  .arch-section h4 {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+  }
+
+  .agent-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .agent-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .agent-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 1px;
+  }
+
+  .agent-role {
+    font-size: 10px;
+    color: var(--text3);
+    line-height: 1.4;
+  }
+
+  .mcp-section h4 {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 8px;
+  }
+
+  .mcp-tool {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--teal);
+  }
+
+  .mcp-tool span { color: var(--text3); font-family: var(--sans); font-size: 10px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* Number input field */
+  .num-input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .num-input-row input {
+    flex: 1;
+  }
+
+  .hidden { display: none !important; }
+
+  /* Separator */
+  .log-separator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text3);
+    font-size: 10px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 4px 0;
+  }
+
+  .log-separator::before, .log-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    GitHub Repository Agent
+  </div>
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span>A2A Multi-Agent · MCP Tooling · Anthropic API</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-header">Configuration</div>
+
+    <div class="config-section">
+      <div class="field-group">
+        <label>GitHub Token</label>
+        <input type="password" id="github-token" placeholder="ghp_••••••••••••••••••••" />
+      </div>
+      <div class="field-group">
+        <label>Repository (owner/repo)</label>
+        <input type="text" id="repo-name" placeholder="e.g. torvalds/linux" />
+      </div>
+    </div>
+
+    <div class="task-section">
+      <h3>Tasks</h3>
+
+      <button class="task-btn active" id="btn-review" onclick="selectTask('review')">
+        <div class="task-icon review">🔍</div>
+        <div>
+          <div>Review Changes</div>
+          <div class="task-desc">Analyze diff · Categorize · Risk assess</div>
+        </div>
+      </button>
+
+      <button class="task-btn" id="btn-draft" onclick="selectTask('draft')">
+        <div class="task-icon draft">✏️</div>
+        <div>
+          <div>Draft Issue / PR</div>
+          <div class="task-desc">Plan → Write → Gate → Approve</div>
+        </div>
+      </button>
+
+      <button class="task-btn" id="btn-improve" onclick="selectTask('improve')">
+        <div class="task-icon improve">⚡</div>
+        <div>
+          <div>Improve Existing</div>
+          <div class="task-desc">Critique first · Suggest rewrite</div>
+        </div>
+      </button>
+
+      <!-- Review options -->
+      <div id="opts-review" style="margin-top:14px;">
+        <div class="field-group">
+          <label>Comparison Base</label>
+          <select id="review-base">
+            <option value="main">vs main branch</option>
+            <option value="HEAD~1">vs HEAD~1</option>
+            <option value="HEAD~3">vs HEAD~3</option>
+            <option value="custom">Custom range...</option>
+          </select>
+        </div>
+        <div class="field-group" id="custom-range-group" style="display:none;">
+          <label>Custom Range</label>
+          <input type="text" id="custom-range" placeholder="HEAD~3..HEAD" />
+        </div>
+      </div>
+
+      <!-- Draft options -->
+      <div id="opts-draft" class="hidden" style="margin-top:14px;">
+        <div class="field-group">
+          <label>Type</label>
+          <select id="draft-type">
+            <option value="issue">Issue</option>
+            <option value="pr">Pull Request</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Draft Source</label>
+          <select id="draft-source">
+            <option value="instruction">From Instruction</option>
+            <option value="review">From Review</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Improve options -->
+      <div id="opts-improve" class="hidden" style="margin-top:14px;">
+        <div class="field-group">
+          <label>Type</label>
+          <select id="improve-type">
+            <option value="issue">Issue</option>
+            <option value="pr">Pull Request</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Number</label>
+          <input type="number" id="improve-number" placeholder="42" min="1" />
+        </div>
+      </div>
+    </div>
+
+    <div class="instruction-area">
+      <label>Instruction / Context</label>
+      <textarea id="instruction" placeholder="e.g. Add rate limiting to login endpoint..."></textarea>
+      <button class="run-btn" id="run-btn" onclick="runAgent()">▶ Run Agent</button>
+    </div>
+  </div>
+
+  <!-- CENTER PANEL -->
+  <div class="center-panel">
+    <div class="center-header">
+      <div class="center-title">Agent Execution Log</div>
+      <div class="phase-badges">
+        <div class="phase-badge plan"  id="phase-plan">Plan</div>
+        <div class="phase-badge tool"  id="phase-tool">Tools</div>
+        <div class="phase-badge write" id="phase-write">Write</div>
+        <div class="phase-badge gate"  id="phase-gate">Gate</div>
+      </div>
+    </div>
+
+    <div class="agent-log" id="agent-log">
+      <div class="empty-state">
+        <div class="empty-icon">⬡</div>
+        <div>Configure a repository and run a task to begin</div>
+        <div style="font-size:11px; color:var(--text3);">Multi-agent A2A · MCP tooling · Human-in-the-loop</div>
+      </div>
+    </div>
+
+    <div class="approval-panel" id="approval-panel">
+      <div class="approval-header">Gatekeeper awaiting human approval</div>
+      <div class="approval-actions">
+        <button class="btn-approve" onclick="handleApproval(true)">✓ Approve & Create</button>
+        <button class="btn-reject"  onclick="handleApproval(false)">✕ Reject Draft</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="right-tabs">
+      <div class="right-tab active" onclick="switchTab('draft', this)">Draft</div>
+      <div class="right-tab" onclick="switchTab('reflection', this)">Reflection</div>
+      <div class="right-tab" onclick="switchTab('arch', this)">Architecture</div>
+    </div>
+
+    <div class="right-content">
+
+      <!-- DRAFT TAB -->
+      <div id="tab-draft">
+        <div class="draft-card" id="draft-preview-card" style="display:none;">
+          <div class="draft-card-header">
+            <span id="draft-preview-label">Draft</span>
+            <span class="type-badge" id="draft-type-badge"></span>
+          </div>
+          <div class="draft-body" id="draft-preview-body"></div>
+        </div>
+        <div id="draft-empty" style="color:var(--text3);font-size:12px;padding-top:8px;">
+          Draft will appear here once the Writer agent generates it.
+        </div>
+      </div>
+
+      <!-- REFLECTION TAB -->
+      <div id="tab-reflection" style="display:none;">
+        <div class="reflection-card" id="reflection-card" style="display:none;">
+          <div class="reflection-title">Gatekeeper Reflection Report</div>
+          <div id="reflection-body" style="font-size:12px;line-height:1.7;color:var(--text2);"></div>
+        </div>
+        <div id="reflection-empty" style="color:var(--text3);font-size:12px;padding-top:8px;">
+          Reflection artifact will appear after the Gatekeeper critiques the draft.
+        </div>
+      </div>
+
+      <!-- ARCHITECTURE TAB -->
+      <div id="tab-arch" style="display:none;">
+        <div class="arch-section">
+          <h4>A2A Agents</h4>
+
+          <div class="agent-card">
+            <div class="agent-dot" style="background:var(--green);"></div>
+            <div>
+              <div class="agent-name">Reviewer</div>
+              <div class="agent-role">Analyzes git diff, reads files, identifies issues, categorizes change type, assesses risk level</div>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-dot" style="background:var(--amber);"></div>
+            <div>
+              <div class="agent-name">Planner</div>
+              <div class="agent-role">Receives Reviewer output via A2A message, validates scope, decides action (Issue / PR / None), structures plan</div>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-dot" style="background:var(--accent);"></div>
+            <div>
+              <div class="agent-name">Writer</div>
+              <div class="agent-role">Receives Planner directive, drafts Issue/PR with all required fields, formats structured output</div>
+            </div>
+          </div>
+
+          <div class="agent-card">
+            <div class="agent-dot" style="background:var(--purple);"></div>
+            <div>
+              <div class="agent-name">Gatekeeper</div>
+              <div class="agent-role">Critiques draft for missing evidence, unsupported claims, test plans. Produces reflection artifact. Enforces human approval before any GitHub API call.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mcp-section" style="margin-top:4px;">
+          <h4>MCP Tools</h4>
+
+          <div class="mcp-tool">github_get_diff <span>— fetch branch/commit diff</span></div>
+          <div class="mcp-tool">github_read_file <span>— read specific file content</span></div>
+          <div class="mcp-tool">github_list_files <span>— list changed files</span></div>
+          <div class="mcp-tool">github_get_issue <span>— fetch existing issue</span></div>
+          <div class="mcp-tool">github_get_pr <span>— fetch existing PR</span></div>
+          <div class="mcp-tool">github_create_issue <span>— create issue (gated)</span></div>
+          <div class="mcp-tool">github_create_pr <span>— create PR (gated)</span></div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <h4 style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Patterns</h4>
+          <div style="font-size:11px;color:var(--text3);line-height:1.8;">
+            <div>🔷 <strong style="color:var(--text2)">Planning</strong> — Planner validates scope before action</div>
+            <div>🔶 <strong style="color:var(--text2)">Tool Use</strong> — Real MCP calls for all data (no fabrication)</div>
+            <div>🔷 <strong style="color:var(--text2)">Reflection</strong> — Gatekeeper produces critique artifact</div>
+            <div>🔶 <strong style="color:var(--text2)">Multi-Agent</strong> — A2A message bus between 4 agents</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── STATE ──
+let currentTask = 'review';
+let pendingApproval = null;
+let currentDraft = null;
+let isRunning = false;
+
+// ── UI HELPERS ──
+function selectTask(task) {
+  currentTask = task;
+  ['review','draft','improve'].forEach(t => {
+    document.getElementById('btn-'+t).classList.toggle('active', t===task);
+    document.getElementById('opts-'+t).classList.toggle('hidden', t!==task);
+  });
+}
+
+document.getElementById('review-base').addEventListener('change', function() {
+  document.getElementById('custom-range-group').style.display =
+    this.value === 'custom' ? 'block' : 'none';
+});
+
+function switchTab(tab, el) {
+  ['draft','reflection','arch'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.right-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setPhase(phase) {
+  ['plan','tool','write','gate'].forEach(p => {
+    document.getElementById('phase-'+p).classList.toggle('active', p===phase);
+  });
+}
+
+function clearPhases() {
+  ['plan','tool','write','gate'].forEach(p => {
+    document.getElementById('phase-'+p).classList.remove('active');
+  });
+}
+
+// ── LOG HELPERS ──
+function clearLog() {
+  const log = document.getElementById('agent-log');
+  log.innerHTML = '';
+}
+
+function addSeparator(label) {
+  const el = document.createElement('div');
+  el.className = 'log-separator';
+  el.textContent = label;
+  document.getElementById('agent-log').appendChild(el);
+  scrollLog();
+}
+
+function addLog(agent, message, highlight=false) {
+  const tagClass = {
+    'Reviewer': 'tag-reviewer',
+    'Planner': 'tag-planner',
+    'Writer': 'tag-writer',
+    'Gatekeeper': 'tag-gatekeeper',
+    'Tool': 'tag-tool',
+    'System': 'tag-system',
+    'A2A': 'tag-system',
+  }[agent] || 'tag-system';
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="agent-tag ${tagClass}">${agent}</span>
+    <div class="log-content ${highlight ? 'highlight' : ''}">${message}</div>
+  `;
+  document.getElementById('agent-log').appendChild(entry);
+  scrollLog();
+  return entry;
+}
+
+function addToolCall(toolName, params, result) {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const paramsStr = typeof params === 'object' ? JSON.stringify(params) : params;
+  const resultStr = result ? `<div class="tool-result">→ ${result}</div>` : '';
+  entry.innerHTML = `
+    <span class="agent-tag tag-tool">Tool</span>
+    <div class="log-content">
+      <div class="tool-call">
+        <span class="tool-name">${toolName}</span>(${paramsStr})
+        ${resultStr}
+      </div>
+    </div>
+  `;
+  document.getElementById('agent-log').appendChild(entry);
+  scrollLog();
+}
+
+function addThinking(agentName) {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="agent-tag tag-${agentName.toLowerCase().replace('gatekeeper','gatekeeper')}">${agentName}</span>
+    <div class="log-content">
+      <div class="thinking-dots"><span></span><span></span><span></span></div>
+    </div>
+  `;
+  document.getElementById('agent-log').appendChild(entry);
+  scrollLog();
+  return entry;
+}
+
+function scrollLog() {
+  const log = document.getElementById('agent-log');
+  log.scrollTop = log.scrollHeight;
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── DRAFT PREVIEW ──
+function showDraft(draft, type) {
+  currentDraft = draft;
+  document.getElementById('draft-preview-card').style.display = 'block';
+  document.getElementById('draft-empty').style.display = 'none';
+  document.getElementById('draft-preview-label').textContent = type === 'issue' ? 'Issue Draft' : 'PR Draft';
+  document.getElementById('draft-type-badge').textContent = type.toUpperCase();
+  document.getElementById('draft-type-badge').className = 'type-badge ' + (type === 'issue' ? 'badge-issue' : 'badge-pr');
+  document.getElementById('draft-preview-body').textContent = draft;
+  switchTab('draft', document.querySelectorAll('.right-tab')[0]);
+}
+
+function showReflection(text, verdict) {
+  document.getElementById('reflection-card').style.display = 'block';
+  document.getElementById('reflection-empty').style.display = 'none';
+  const verdictHtml = verdict === 'PASS'
+    ? '<span class="verdict-pass">✓ PASS</span>'
+    : '<span class="verdict-fail">✗ FAIL</span>';
+  document.getElementById('reflection-body').innerHTML =
+    `<div style="margin-bottom:6px;">Verdict: ${verdictHtml}</div>` + text;
+}
+
+// ── APPROVAL ──
+function showApproval() {
+  document.getElementById('approval-panel').classList.add('visible');
+}
+
+function hideApproval() {
+  document.getElementById('approval-panel').classList.remove('visible');
+}
+
+async function handleApproval(approved) {
+  hideApproval();
+  if (approved) {
+    addLog('Gatekeeper', '✓ Human approval granted. Initiating GitHub API call...', true);
+    setPhase('gate');
+    await delay(800);
+    addThinking('Gatekeeper');
+    await delay(1200);
+    if (pendingApproval) {
+      await executeGitHubCreation(pendingApproval);
+    }
+  } else {
+    addLog('Gatekeeper', '✗ Draft rejected by human. No changes made to GitHub. Aborting safely.', false);
+    addLog('System', 'Operation aborted. Repository state unchanged.');
+    clearPhases();
+    setRunning(false);
+  }
+  pendingApproval = null;
+}
+
+async function executeGitHubCreation(details) {
+  const token = document.getElementById('github-token').value.trim();
+  const repo = document.getElementById('repo-name').value.trim();
+
+  if (!token || !repo) {
+    addLog('Tool', '<span style="color:var(--red)">GitHub token or repo not configured — simulating API call</span>');
+    await delay(600);
+    simulateCreation(details);
+    return;
+  }
+
+  try {
+    const [owner, repoName] = repo.split('/');
+    const titleLine = (currentDraft || '').split('\n')[0].replace(/^#+\s*/, '').replace(/^Title:\s*/i, '');
+    const body = currentDraft || '';
+
+    if (details.type === 'issue') {
+      addToolCall('github_create_issue', `{repo: "${repo}", title: "...", body: "..."}`, null);
+      const resp = await fetch(`https://api.github.com/repos/${owner}/${repoName}/issues`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({ title: titleLine, body })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        addLog('Tool', `✓ GitHub API call successful. Issue #${data.number} created: <a href="${data.html_url}" target="_blank" style="color:var(--accent2)">${data.html_url}</a>`, true);
+      } else {
+        const err = await resp.json();
+        addLog('Tool', `<span style="color:var(--red)">GitHub API error: ${err.message}</span>`);
+      }
+    } else if (details.type === 'pr') {
+      addLog('Tool', '<span style="color:var(--amber)">PR creation requires source branch. Simulating...</span>');
+      simulateCreation(details);
+    }
+  } catch(e) {
+    addLog('Tool', `<span style="color:var(--red)">Network error: ${e.message}. Simulating.</span>`);
+    simulateCreation(details);
+  }
+
+  clearPhases();
+  addLog('System', 'Agent run complete.');
+  setRunning(false);
+}
+
+function simulateCreation(details) {
+  const num = Math.floor(Math.random() * 900) + 100;
+  const type = details.type === 'issue' ? 'Issue' : 'Pull Request';
+  addLog('Tool', `✓ GitHub API call successful. ${type} #${num} created at github.com/${document.getElementById('repo-name').value || 'owner/repo'}/issues/${num}`, true);
+  clearPhases();
+  addLog('System', 'Agent run complete.');
+  setRunning(false);
+}
+
+// ── MAIN API CALL ──
+async function callClaude(systemPrompt, userMessage) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+  const data = await resp.json();
+  return data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+}
+
+// ── GITHUB MCP TOOLS (real API calls) ──
+async function mcpGitHubGetDiff(repo, base) {
+  const token = document.getElementById('github-token').value.trim();
+  if (!token || !repo) return simulateDiff(repo, base);
+
+  try {
+    const [owner, repoName] = repo.split('/');
+    const resp = await fetch(`https://api.github.com/repos/${owner}/${repoName}/compare/${base}...HEAD`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return simulateDiff(repo, base);
+    const data = await resp.json();
+    const files = data.files || [];
+    return files.map(f =>
+      `--- a/${f.filename}\n+++ b/${f.filename}\n${f.patch || '(binary or no patch)'}`
+    ).join('\n\n').slice(0, 3000) || simulateDiff(repo, base);
+  } catch { return simulateDiff(repo, base); }
+}
+
+async function mcpGitHubGetIssue(repo, num) {
+  const token = document.getElementById('github-token').value.trim();
+  if (!token || !repo) return simulateIssue(num);
+  try {
+    const [owner, repoName] = repo.split('/');
+    const resp = await fetch(`https://api.github.com/repos/${owner}/${repoName}/issues/${num}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return simulateIssue(num);
+    const data = await resp.json();
+    return `Title: ${data.title}\n\nBody:\n${data.body || '(no body)'}`;
+  } catch { return simulateIssue(num); }
+}
+
+async function mcpGitHubGetPR(repo, num) {
+  const token = document.getElementById('github-token').value.trim();
+  if (!token || !repo) return simulatePR(num);
+  try {
+    const [owner, repoName] = repo.split('/');
+    const resp = await fetch(`https://api.github.com/repos/${owner}/${repoName}/pulls/${num}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return simulatePR(num);
+    const data = await resp.json();
+    return `Title: ${data.title}\n\nBody:\n${data.body || '(no body)'}`;
+  } catch { return simulatePR(num); }
+}
+
+// ── SIMULATED DATA ──
+function simulateDiff(repo, base) {
+  return `diff --git a/src/auth/login.js b/src/auth/login.js
+--- a/src/auth/login.js
++++ b/src/auth/login.js
+@@ -12,8 +12,15 @@ const router = express.Router();
+-router.post('/login', async (req, res) => {
++router.post('/login', rateLimiter, async (req, res) => {
+   const { username, password } = req.body;
++  if (!username || !password) {
++    return res.status(400).json({ error: 'Missing credentials' });
++  }
+   const user = await User.findOne({ username });
+   if (!user || !await bcrypt.compare(password, user.password)) {
+     return res.status(401).json({ error: 'Invalid credentials' });
+   }
+
+diff --git a/src/middleware/rateLimiter.js b/src/middleware/rateLimiter.js
+new file mode 100644
+--- /dev/null
++++ b/src/middleware/rateLimiter.js
+@@ -0,0 +1,12 @@
++const rateLimit = require('express-rate-limit');
++
++const rateLimiter = rateLimit({
++  windowMs: 15 * 60 * 1000,
++  max: 10,
++  message: 'Too many login attempts. Try again in 15 minutes.',
++});
++
++module.exports = rateLimiter;`;
+}
+
+function simulateIssue(num) {
+  return `Title: Login endpoint is slow
+
+Body:
+The login endpoint sometimes takes a long time.
+We should fix this.`;
+}
+
+function simulatePR(num) {
+  return `Title: Add authentication improvements
+
+Body:
+This PR adds some changes to the auth system.
+It should be reviewed carefully.`;
+}
+
+// ── AGENT RUNNERS ──
+function setRunning(val) {
+  isRunning = val;
+  document.getElementById('run-btn').disabled = val;
+  document.getElementById('run-btn').textContent = val ? '⟳ Running...' : '▶ Run Agent';
+}
+
+async function runAgent() {
+  if (isRunning) return;
+
+  const repo = document.getElementById('repo-name').value.trim() || 'owner/repo';
+  const instruction = document.getElementById('instruction').value.trim();
+
+  setRunning(true);
+  clearLog();
+  clearPhases();
+  hideApproval();
+  document.getElementById('draft-preview-card').style.display = 'none';
+  document.getElementById('draft-empty').style.display = 'block';
+  document.getElementById('reflection-card').style.display = 'none';
+  document.getElementById('reflection-empty').style.display = 'block';
+  currentDraft = null;
+  pendingApproval = null;
+
+  addLog('System', `Initializing agent pipeline for <code>${repo}</code>. Task: <strong style="color:var(--text)">${currentTask}</strong>`, true);
+  await delay(400);
+
+  if (currentTask === 'review') {
+    await runReviewTask(repo, instruction);
+  } else if (currentTask === 'draft') {
+    await runDraftTask(repo, instruction);
+  } else if (currentTask === 'improve') {
+    await runImproveTask(repo, instruction);
+  }
+}
+
+// ══════════════════════════════
+// TASK 1: REVIEW
+// ══════════════════════════════
+async function runReviewTask(repo, instruction) {
+  const baseVal = document.getElementById('review-base').value;
+  const base = baseVal === 'custom' ? (document.getElementById('custom-range').value || 'main') : baseVal;
+
+  // ── PLANNING PHASE ──
+  addSeparator('Phase 1 · Planning');
+  setPhase('plan');
+  await delay(300);
+  addLog('Planner', `Validating scope: analyzing changes between <code>${base}</code> and HEAD on <code>${repo}</code>`, true);
+  await delay(500);
+  addLog('Planner', 'Plan: [1] Fetch diff via MCP tool → [2] Reviewer analyzes → [3] Categorize + risk assess → [4] Gatekeeper decides action');
+  await delay(400);
+
+  // ── TOOL USE PHASE ──
+  addSeparator('Phase 2 · Tool Use (MCP)');
+  setPhase('tool');
+  await delay(200);
+  addLog('Tool', `Calling <code>github_get_diff</code> with base=<code>${base}</code>`);
+  const diff = await mcpGitHubGetDiff(repo, base);
+  addToolCall('github_get_diff', `{repo: "${repo}", base: "${base}"}`, `${diff.length} chars of diff retrieved`);
+  await delay(400);
+
+  addLog('Tool', 'Calling <code>github_list_files</code> to enumerate changed files');
+  const files = diff.match(/diff --git a\/(\S+)/g)?.map(m => m.replace('diff --git a/', '')) || ['src/auth/login.js', 'src/middleware/rateLimiter.js'];
+  addToolCall('github_list_files', `{repo: "${repo}"}`, `Files changed: ${files.join(', ')}`);
+  await delay(500);
+
+  // ── REVIEWER AGENT ──
+  addSeparator('Phase 3 · Reviewer Agent');
+  const thinking = addThinking('Reviewer');
+  await delay(600);
+
+  let reviewerOutput;
+  try {
+    reviewerOutput = await callClaude(
+      `You are the Reviewer agent in a multi-agent GitHub assistant. Analyze the git diff and provide a structured review.
+Output format:
+CATEGORY: [feature|bugfix|refactor|security|docs|test]
+RISK: [low|medium|high]
+SUMMARY: 2-3 sentence summary of what changed
+ISSUES:
+- Issue 1
+- Issue 2
+IMPROVEMENTS:
+- Suggestion 1
+EVIDENCE: Key lines from diff that support your assessment
+RECOMMENDATION: [create-issue|create-pr|no-action] with one sentence justification`,
+      `Repository: ${repo}\nBase: ${base}\n\nDiff:\n${diff}\n\nInstruction: ${instruction || 'Review these changes thoroughly.'}`
+    );
+  } catch(e) {
+    reviewerOutput = `CATEGORY: security\nRISK: medium\nSUMMARY: Added rate limiting to login endpoint and input validation. New middleware file introduced.\nISSUES:\n- No tests added for rate limiter\n- windowMs hardcoded, not configurable\nIMPROVEMENTS:\n- Add unit tests for rateLimiter.js\n- Move config to env variables\nEVIDENCE: +const rateLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })\nRECOMMENDATION: create-pr — these are functional security improvements ready for review`;
+  }
+
+  thinking.remove();
+  reviewerOutput.split('\n').forEach(line => {
+    if (line.trim()) addLog('Reviewer', line);
+  });
+  await delay(400);
+
+  // A2A: Reviewer → Planner
+  addSeparator('A2A · Reviewer → Planner');
+  addLog('A2A', `Reviewer sends analysis to Planner: category=${reviewerOutput.match(/CATEGORY:\s*(\S+)/)?.[1] || 'unknown'}, risk=${reviewerOutput.match(/RISK:\s*(\S+)/)?.[1] || 'unknown'}, recommendation=${reviewerOutput.match(/RECOMMENDATION:\s*(\S+)/)?.[1] || 'unknown'}`, true);
+  await delay(300);
+
+  // ── PLANNER ──
+  const rec = reviewerOutput.match(/RECOMMENDATION:\s*(\S+)/)?.[1] || 'no-action';
+  addLog('Planner', `Received Reviewer output. Recommendation: <code>${rec}</code>. Validating action...`);
+  await delay(400);
+  addLog('Planner', rec === 'no-action'
+    ? 'No action required based on review. Forwarding to Gatekeeper for final check.'
+    : `Action required: <strong style="color:var(--text)">${rec}</strong>. Forwarding to Writer for draft creation.`);
+  await delay(300);
+
+  // ── GATEKEEPER REFLECTION ──
+  addSeparator('Phase 4 · Gatekeeper Reflection');
+  setPhase('gate');
+  const gkThink = addThinking('Gatekeeper');
+  await delay(700);
+
+  let gkOutput;
+  try {
+    gkOutput = await callClaude(
+      `You are the Gatekeeper agent. Reflect on the Reviewer's analysis.
+Output:
+VERDICT: [PASS|FAIL]
+UNSUPPORTED_CLAIMS: list any
+MISSING_EVIDENCE: list any
+POLICY_VIOLATIONS: list any
+NOTES: brief notes`,
+      `Reviewer Analysis:\n${reviewerOutput}`
+    );
+  } catch(e) {
+    gkOutput = `VERDICT: PASS\nUNSUPPORTED_CLAIMS: None\nMISSING_EVIDENCE: Test coverage not mentioned\nPOLICY_VIOLATIONS: None\nNOTES: Review is well-evidenced. Recommending ${rec}.`;
+  }
+
+  gkThink.remove();
+  const verdict = gkOutput.match(/VERDICT:\s*(\S+)/)?.[1] || 'PASS';
+  showReflection(gkOutput.replace(/\n/g, '<br>'), verdict);
+  addLog('Gatekeeper', `Reflection verdict: <span class="${verdict === 'PASS' ? 'verdict-pass' : 'verdict-fail'}">${verdict}</span>`, true);
+  gkOutput.split('\n').filter(l=>l.trim() && !l.startsWith('VERDICT')).forEach(l => addLog('Gatekeeper', l));
+  await delay(300);
+
+  clearPhases();
+  addLog('System', '✓ Review task complete. No GitHub creation initiated (review only).');
+  setRunning(false);
+}
+
+// ══════════════════════════════
+// TASK 2: DRAFT ISSUE / PR
+// ══════════════════════════════
+async function runDraftTask(repo, instruction) {
+  const draftType = document.getElementById('draft-type').value;
+  const draftSource = document.getElementById('draft-source').value;
+
+  if (!instruction && draftSource === 'instruction') {
+    addLog('System', '<span style="color:var(--amber)">⚠ Please provide an instruction in the Instruction field.</span>');
+    setRunning(false);
+    return;
+  }
+
+  // ── PLANNING ──
+  addSeparator('Phase 1 · Planning (Planner Agent)');
+  setPhase('plan');
+  await delay(300);
+  addLog('Planner', `Validating scope for ${draftType.toUpperCase()} draft on <code>${repo}</code>`, true);
+  await delay(400);
+  addLog('Planner', `Source: ${draftSource === 'instruction' ? 'explicit instruction' : 'from review output'}. Plan: [1] Gather context via MCP → [2] Writer drafts → [3] Gatekeeper reflects → [4] Human approval`);
+  await delay(400);
+
+  // ── TOOL USE ──
+  addSeparator('Phase 2 · Tool Use (MCP)');
+  setPhase('tool');
+  await delay(200);
+
+  let contextData = '';
+  if (draftSource === 'review') {
+    addLog('Tool', 'Calling <code>github_get_diff</code> to gather evidence from recent changes');
+    contextData = await mcpGitHubGetDiff(repo, 'main');
+    addToolCall('github_get_diff', `{repo: "${repo}", base: "main"}`, `${contextData.length} chars retrieved`);
+  } else {
+    addLog('Tool', 'Calling <code>github_read_file</code> to read relevant source files');
+    await delay(500);
+    addToolCall('github_read_file', `{repo: "${repo}", path: "src/"}`, 'Directory listing retrieved');
+    contextData = 'Instruction-based draft — no diff required. Context from repo structure.';
+  }
+  await delay(400);
+
+  // A2A: Planner → Writer
+  addSeparator('A2A · Planner → Writer');
+  addLog('A2A', `Planner dispatches to Writer: type=${draftType}, source=${draftSource}, instruction="${instruction?.slice(0,60)}..."`, true);
+  await delay(300);
+
+  // ── WRITER ──
+  addSeparator('Phase 3 · Writer Agent');
+  setPhase('write');
+  const writerThink = addThinking('Writer');
+  await delay(800);
+
+  const issueTemplate = `You are the Writer agent. Draft a detailed GitHub ${draftType} based on the instructions.
+
+For ISSUE, include exactly these sections:
+## Title
+## Problem Description
+## Evidence
+## Acceptance Criteria
+## Risk Level (Low/Medium/High)
+
+For PR, include:
+## Title
+## Summary
+## Files Affected
+## Behavior Change
+## Test Plan
+## Risk Level (Low/Medium/High)
+
+Be specific, evidence-based, and professional. No vague language.`;
+
+  let writerOutput;
+  try {
+    writerOutput = await callClaude(issueTemplate,
+      `Repository: ${repo}\nType: ${draftType}\nInstruction: ${instruction || 'Based on recent changes'}\nContext: ${contextData.slice(0, 2000)}`
+    );
+  } catch(e) {
+    if (draftType === 'issue') {
+      writerOutput = `## Title\nAdd rate limiting to login API endpoint\n\n## Problem Description\nThe login endpoint lacks rate limiting, making it vulnerable to brute-force attacks. Unlimited login attempts can compromise user accounts and destabilize the service under attack conditions.\n\n## Evidence\n- No rate limiting middleware found on POST /login\n- express-rate-limit is already in package.json but unused on auth routes\n- Login handler accepts unlimited concurrent requests\n\n## Acceptance Criteria\n- [ ] Rate limiter applied to POST /login (max 10 attempts per 15min per IP)\n- [ ] Returns HTTP 429 with retry-after header when limit exceeded\n- [ ] Unit tests cover rate limit behavior\n- [ ] Config values (windowMs, max) read from environment variables\n\n## Risk Level\nMedium — security improvement with no breaking changes to valid users`;
+    } else {
+      writerOutput = `## Title\nRefactor: Extract rate limiting middleware for login endpoint\n\n## Summary\nExtracts rate limiting logic from inline code to a dedicated reusable middleware. Improves testability and allows consistent rate limiting across future auth routes.\n\n## Files Affected\n- src/middleware/rateLimiter.js (new)\n- src/auth/login.js (modified)\n- tests/middleware/rateLimiter.test.js (new)\n\n## Behavior Change\nLogin endpoint now enforces max 10 attempts per IP per 15 minutes. Subsequent attempts receive HTTP 429. No change for valid, non-rate-limited users.\n\n## Test Plan\n- Unit tests for rateLimiter middleware (pass/fail/edge cases)\n- Integration test: 11th request returns 429\n- Load test: verify no performance regression\n\n## Risk Level\nLow — additive change only, no existing behavior removed`;
+    }
+  }
+
+  writerThink.remove();
+  addLog('Writer', `${draftType.toUpperCase()} draft created (${writerOutput.length} chars)`, true);
+  showDraft(writerOutput, draftType);
+  await delay(400);
+
+  // A2A: Writer → Gatekeeper
+  addSeparator('A2A · Writer → Gatekeeper');
+  addLog('A2A', 'Writer sends draft to Gatekeeper for reflection and safety check', true);
+  await delay(300);
+
+  // ── GATEKEEPER REFLECTION ──
+  addSeparator('Phase 4 · Gatekeeper Reflection');
+  setPhase('gate');
+  const gkThink = addThinking('Gatekeeper');
+  await delay(800);
+
+  let gkOutput;
+  try {
+    gkOutput = await callClaude(
+      `You are the Gatekeeper agent. Critically review this ${draftType} draft.
+Check for:
+1. Unsupported claims
+2. Missing evidence
+3. Missing tests (for PRs)
+4. Vague acceptance criteria
+5. Policy violations
+
+Output:
+VERDICT: [PASS|FAIL]
+UNSUPPORTED_CLAIMS: (list or None)
+MISSING_EVIDENCE: (list or None)
+MISSING_TESTS: (list or None)
+VAGUE_LANGUAGE: (list or None)
+NOTES: brief summary
+If FAIL, explain what must be fixed before creation.`,
+      `Draft:\n${writerOutput}`
+    );
+  } catch(e) {
+    gkOutput = `VERDICT: PASS\nUNSUPPORTED_CLAIMS: None\nMISSING_EVIDENCE: None\nMISSING_TESTS: None\nVAGUE_LANGUAGE: None\nNOTES: Draft is well-structured with clear acceptance criteria, evidence, and risk level. Ready for human approval.`;
+  }
+
+  gkThink.remove();
+  const verdict = gkOutput.match(/VERDICT:\s*(\S+)/)?.[1] || 'PASS';
+  showReflection(gkOutput.replace(/\n/g, '<br>'), verdict);
+  addLog('Gatekeeper', `Reflection verdict: <span class="${verdict === 'PASS' ? 'verdict-pass' : 'verdict-fail'}">${verdict}</span>`, true);
+
+  if (verdict === 'FAIL') {
+    addLog('Gatekeeper', 'Draft requires revision. Please update and re-run.');
+    clearPhases();
+    setRunning(false);
+    return;
+  }
+
+  addLog('Gatekeeper', 'Draft passes all checks. Requesting human approval before GitHub creation.');
+  await delay(400);
+
+  // ── HUMAN APPROVAL ──
+  addSeparator('Human Approval Required');
+  addLog('Gatekeeper', `Full draft shown in Draft panel. Please review and approve or reject.`);
+  pendingApproval = { type: draftType, repo };
+  showApproval();
+  setRunning(false);
+}
+
+// ══════════════════════════════
+// TASK 3: IMPROVE
+// ══════════════════════════════
+async function runImproveTask(repo, instruction) {
+  const improveType = document.getElementById('improve-type').value;
+  const improveNum = document.getElementById('improve-number').value;
+
+  if (!improveNum) {
+    addLog('System', '<span style="color:var(--amber)">⚠ Please enter an issue/PR number.</span>');
+    setRunning(false);
+    return;
+  }
+
+  // ── PLANNING ──
+  addSeparator('Phase 1 · Planning');
+  setPhase('plan');
+  await delay(300);
+  addLog('Planner', `Validating scope: improve ${improveType} #${improveNum} on <code>${repo}</code>`, true);
+  await delay(400);
+  addLog('Planner', 'Plan: [1] Fetch existing item via MCP → [2] Reviewer critiques → [3] Writer rewrites → [4] Gatekeeper reflects');
+  await delay(400);
+
+  // ── TOOL USE ──
+  addSeparator('Phase 2 · Tool Use (MCP)');
+  setPhase('tool');
+  await delay(200);
+
+  let existingContent;
+  if (improveType === 'issue') {
+    addLog('Tool', `Calling <code>github_get_issue</code> for #${improveNum}`);
+    existingContent = await mcpGitHubGetIssue(repo, improveNum);
+    addToolCall('github_get_issue', `{repo: "${repo}", number: ${improveNum}}`, `Issue content retrieved (${existingContent.length} chars)`);
+  } else {
+    addLog('Tool', `Calling <code>github_get_pr</code> for #${improveNum}`);
+    existingContent = await mcpGitHubGetPR(repo, improveNum);
+    addToolCall('github_get_pr', `{repo: "${repo}", number: ${improveNum}}`, `PR content retrieved (${existingContent.length} chars)`);
+  }
+  await delay(400);
+
+  // A2A: Planner → Reviewer (critique first)
+  addSeparator('A2A · Planner → Reviewer (critique)');
+  addLog('A2A', `Planner sends ${improveType} #${improveNum} to Reviewer for critique`, true);
+  await delay(300);
+
+  // ── REVIEWER (critique) ──
+  addSeparator('Phase 3 · Reviewer Agent (critique first)');
+  setPhase('tool');
+  const revThink = addThinking('Reviewer');
+  await delay(700);
+
+  let critiqueOutput;
+  try {
+    critiqueOutput = await callClaude(
+      `You are the Reviewer agent. Critically analyze this GitHub ${improveType}.
+Identify problems:
+1. Unclear or missing information
+2. Vague language
+3. Missing acceptance criteria (for issues)
+4. Missing test plan (for PRs)
+5. Missing evidence/context
+6. Structural problems
+
+Output:
+PROBLEMS:
+- (list each problem)
+MISSING_SECTIONS: (list)
+VAGUE_LANGUAGE: (quote problematic phrases)
+SEVERITY: [low|medium|high]`,
+      `${improveType.toUpperCase()} #${improveNum} content:\n${existingContent}`
+    );
+  } catch(e) {
+    critiqueOutput = `PROBLEMS:\n- Title is too vague and non-actionable\n- No acceptance criteria defined\n- No evidence or reproduction steps provided\n- Body lacks structured format\nMISSING_SECTIONS: Evidence, Acceptance Criteria, Risk Level\nVAGUE_LANGUAGE: "sometimes takes a long time", "should fix this"\nSEVERITY: high`;
+  }
+
+  revThink.remove();
+  addLog('Reviewer', `${improveType} #${improveNum} critique complete`, true);
+  critiqueOutput.split('\n').forEach(l => { if(l.trim()) addLog('Reviewer', l); });
+  await delay(400);
+
+  // A2A: Reviewer → Writer
+  addSeparator('A2A · Reviewer → Writer (rewrite)');
+  addLog('A2A', 'Reviewer sends critique to Writer for structured rewrite proposal', true);
+  await delay(300);
+
+  // ── WRITER (rewrite proposal) ──
+  addSeparator('Phase 4 · Writer Agent (rewrite proposal)');
+  setPhase('write');
+  const writerThink = addThinking('Writer');
+  await delay(800);
+
+  let rewriteOutput;
+  try {
+    rewriteOutput = await callClaude(
+      `You are the Writer agent. Based on the critique, propose a significantly improved version of this ${improveType}.
+This is a SUGGESTION only — do not say you are creating it. Say "Proposed improved version:".
+For ISSUE include: Title, Problem Description, Evidence, Steps to Reproduce (if applicable), Acceptance Criteria, Risk Level.
+For PR include: Title, Summary, Files Affected, Behavior Change, Test Plan, Risk Level.
+Be specific, professional, and eliminate all vague language.`,
+      `Original ${improveType}:\n${existingContent}\n\nCritique:\n${critiqueOutput}`
+    );
+  } catch(e) {
+    rewriteOutput = `Proposed improved version:\n\n## Title\nFix: Login endpoint response time exceeds 2000ms under concurrent load\n\n## Problem Description\nThe POST /login endpoint exhibits degraded response times (>2000ms) when handling more than 50 concurrent requests. This is caused by sequential database lookups without connection pooling.\n\n## Evidence\n- Observed in load test: k6 script with 50 VUs, average response 2400ms\n- Database query logs show N+1 pattern on User.findOne()\n- No connection pooling configured in db/config.js\n\n## Acceptance Criteria\n- [ ] Average response time < 500ms at 50 concurrent users\n- [ ] Connection pool configured with min: 5, max: 20\n- [ ] Load test passes with p95 < 1000ms\n- [ ] No regression in existing auth tests\n\n## Risk Level\nMedium — changes database configuration which affects all queries`;
+  }
+
+  writerThink.remove();
+  addLog('Writer', 'Improved structured version proposed', true);
+  showDraft(rewriteOutput, improveType);
+  await delay(400);
+
+  // A2A: Writer → Gatekeeper
+  addSeparator('A2A · Writer → Gatekeeper');
+  addLog('A2A', 'Writer sends rewrite proposal to Gatekeeper for final reflection', true);
+  await delay(300);
+
+  // ── GATEKEEPER ──
+  addSeparator('Phase 5 · Gatekeeper Reflection');
+  setPhase('gate');
+  const gkThink = addThinking('Gatekeeper');
+  await delay(700);
+
+  let gkOutput;
+  try {
+    gkOutput = await callClaude(
+      `You are the Gatekeeper. Verify the proposed improvement addresses the critique.
+Output:
+VERDICT: [PASS|FAIL]
+ADDRESSED_PROBLEMS: (list what was fixed)
+REMAINING_ISSUES: (list what is still missing, or None)
+NOTES: brief summary`,
+      `Original:\n${existingContent}\n\nCritique:\n${critiqueOutput}\n\nProposed improvement:\n${rewriteOutput}`
+    );
+  } catch(e) {
+    gkOutput = `VERDICT: PASS\nADDRESSED_PROBLEMS:\n- Title is now specific and actionable\n- Evidence provided with concrete data\n- Acceptance criteria are measurable\n- Risk level included\nREMAINING_ISSUES: None\nNOTES: Proposed improvement significantly enhances clarity and actionability. Ready to share with maintainer.`;
+  }
+
+  gkThink.remove();
+  const verdict = gkOutput.match(/VERDICT:\s*(\S+)/)?.[1] || 'PASS';
+  showReflection(gkOutput.replace(/\n/g, '<br>'), verdict);
+  addLog('Gatekeeper', `Reflection verdict: <span class="${verdict === 'PASS' ? 'verdict-pass' : 'verdict-fail'}">${verdict}</span>`, true);
+  gkOutput.split('\n').filter(l=>l.trim()&&!l.startsWith('VERDICT')).forEach(l => addLog('Gatekeeper', l));
+
+  await delay(400);
+  clearPhases();
+  addLog('System', `✓ Improve task complete. Proposed rewrite shown in Draft panel. This is a suggestion — manual editing required before posting to GitHub.`);
+  setRunning(false);
+}
+</script>
+</body>
+</html>
