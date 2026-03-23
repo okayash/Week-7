@@ -802,7 +802,7 @@
     <div class="agent-log" id="agent-log">
       <div class="empty-state">
         <div class="empty-icon">⬡</div>
-        <div>Configure a repository and run a task to begin</div>
+        <div>Configure repo + API keys, then run a task</div>
         <div style="font-size:11px; color:var(--text3);">Multi-agent A2A · MCP tooling · Human-in-the-loop</div>
       </div>
     </div>
@@ -1143,21 +1143,16 @@ function simulateCreation(details) {
 }
 
 // ── MAIN API CALL ──
-async function callClaude(systemPrompt, userMessage) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }]
-    })
-  });
-  if (!resp.ok) throw new Error(`API error: ${resp.status}`);
-  const data = await resp.json();
-  return data.content.filter(b => b.type === 'text').map(b => b.text).join('');
-}
+  async function callClaude(systemPrompt, userMessage) {
+    const resp = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ system: systemPrompt, message: userMessage })
+    });
+    if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error || resp.status); }
+    const data = await resp.json();
+    return data.text;
+  }
 
 // ── GITHUB MCP TOOLS (real API calls) ──
 async function mcpGitHubGetDiff(repo, base) {
